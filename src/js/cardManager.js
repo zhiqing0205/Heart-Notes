@@ -49,13 +49,16 @@ export class CardManager {
 		if (!this.board.getAttribute('data-text-word')) {
 			this.board.setAttribute('data-text-word', this.textWord || 'ZIUCH')
 		}
-		if (inTextPhase && typeof document !== 'undefined') {
-			document.body.classList.remove('heart-theme')
-			document.body.style.removeProperty('--heart-bg-image')
-		}
 		if (inTextPhase) {
 			this.board.classList.remove('heart-background', 'heart-emphasis', 'heartbeat-animation')
 			this.board.style.removeProperty('--heart-bg-image')
+			this.board.classList.add('text-view-balanced')
+			if (typeof document !== 'undefined') {
+				document.body.classList.remove('heart-theme')
+				document.body.style.removeProperty('--heart-bg-image')
+			}
+		} else {
+			this.board.classList.remove('text-view-balanced')
 		}
 	}
 
@@ -98,6 +101,13 @@ export class CardManager {
 		} else {
 			this.heartPositions = heartPositions.slice(0, heartCount)
 		}
+
+		const verticalOffset = this.isMobile ? 0.04 : 0.07
+		const horizontalOffset = this.isMobile ? 0 : 0.015
+		this.heartPositions = this.heartPositions.map(pos => ({
+			x: Math.min(1, Math.max(0, pos.x + horizontalOffset)),
+			y: Math.min(1, Math.max(0, pos.y + verticalOffset))
+		}))
 		this.totalCardsToGenerate = heartCount
 
 		if (this.board) {

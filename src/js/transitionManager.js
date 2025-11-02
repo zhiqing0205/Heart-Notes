@@ -176,6 +176,7 @@ export class TransitionManager {
 		// 为 board 添加心跳动画及背景
 		board.classList.add('heartbeat-animation', 'heart-background')
 		board.style.setProperty('--heart-bg-image', `url('${CONFIG.BACKGROUND.HEART_IMAGE}')`)
+		board.classList.add('heart-emphasis')
 		if (typeof document !== 'undefined') {
 			document.body.style.setProperty('--heart-bg-image', `url('${CONFIG.BACKGROUND.HEART_IMAGE}')`)
 			document.body.classList.add('heart-theme')

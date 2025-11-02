@@ -148,6 +148,19 @@ body.is-mobile #board::before {
 	transform: scale(1);
 }
 
+#board.text-view-balanced {
+	height: clamp(55vh, 62vh, 540px);
+	margin: 0 auto;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+#board.text-view-balanced .card {
+	transition: transform 0.35s ease, opacity 0.35s ease, left 0.35s ease,
+		top 0.35s ease;
+}
+
 body.is-mobile #board {
 	height: 100dvh;
 	overflow: hidden;
