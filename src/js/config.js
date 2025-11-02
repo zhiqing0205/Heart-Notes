@@ -25,7 +25,7 @@ const LETTER_PATTERNS = {
 		'..111..'
 	],
 	U: [
-		'1.....1',
+		'11...11',
 		'1.....1',
 		'1.....1',
 		'1.....1',
@@ -47,7 +47,7 @@ const LETTER_PATTERNS = {
 		'.11111.'
 	],
 	H: [
-		'1.....1',
+		'11...11',
 		'1.....1',
 		'1.....1',
 		'1111111',
@@ -55,7 +55,7 @@ const LETTER_PATTERNS = {
 		'1.....1',
 		'1.....1',
 		'1.....1',
-		'1.....1'
+		'11...11'
 	]
 }
 
@@ -260,7 +260,7 @@ export const CONFIG = {
 			const text = 'ZIUCH'
 			const letters = text.split('')
 			const density = 3
-			const letterSpacing = isMobile ? 3 : 8
+			const letterSpacing = isMobile ? 4 : 12
 
 			const patterns = letters.map(letter => LETTER_PATTERNS[letter] || [])
 			const letterWidths = patterns.map(pattern => (pattern[0] ? pattern[0].length : 0))

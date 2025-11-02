@@ -233,36 +233,36 @@ export class CardManager {
 			letterIndexForCard = typeof position.letterIndex === 'number' ? position.letterIndex : 0
 			colorIndex = colors.length ? letterIndexForCard % colors.length : colorIndex
 
-			const bounds = this.textBounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-			const rangeX = Math.max(bounds.maxX - bounds.minX, 0.001)
-			const rangeY = Math.max(bounds.maxY - bounds.minY, 0.001)
-			const normalizedX = (position.x - bounds.minX) / rangeX
-			const normalizedY = (position.y - bounds.minY) / rangeY
-			const clampedX = Math.min(1, Math.max(0, normalizedX))
-			const clampedY = Math.min(1, Math.max(0, normalizedY))
+		const bounds = this.textBounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+		const rangeX = Math.max(bounds.maxX - bounds.minX, 0.001)
+		const rangeY = Math.max(bounds.maxY - bounds.minY, 0.001)
+		const normalizedX = (position.x - bounds.minX) / rangeX
+		const normalizedY = (position.y - bounds.minY) / rangeY
+		const clampedX = Math.min(1, Math.max(0, normalizedX))
+		const clampedY = Math.min(1, Math.max(0, normalizedY))
 
-			const boardRect = this.board.getBoundingClientRect()
-			const boardWidth = boardRect.width || window.innerWidth
-			const boardHeight = boardRect.height || window.innerHeight * 0.55
+		const boardRect = this.board.getBoundingClientRect()
+		const boardWidth = boardRect.width || window.innerWidth
+		const boardHeight = boardRect.height || window.innerHeight * 0.55
 
-			const paddingX = this.isMobile
-				? Math.max(12, boardWidth * 0.04)
-				: Math.max(28, boardWidth * 0.08)
-			const paddingY = this.isMobile
-				? Math.max(12, boardHeight * 0.06)
-				: Math.max(32, boardHeight * 0.12)
+		const paddingX = this.isMobile
+			? Math.max(12, boardWidth * 0.05)
+			: Math.max(36, boardWidth * 0.1)
+		const paddingY = this.isMobile
+			? Math.max(12, boardHeight * 0.07)
+			: Math.max(40, boardHeight * 0.16)
 
-			const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth)
-			const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight)
+		const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth * 1.2)
+		const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight * 1.2)
 
-			const centerX = paddingX + clampedX * usableWidth
-			const centerY = paddingY + clampedY * usableHeight
+		const centerX = paddingX + clampedX * usableWidth
+		const centerY = paddingY + clampedY * usableHeight
 
-			left = centerX - visualWidth / 2
-			top = centerY - visualHeight / 2
+		left = centerX - visualWidth / 2
+		top = centerY - visualHeight / 2
 
-			left = clamp(left, 0, Math.max(0, boardWidth - visualWidth))
-			top = clamp(top, 0, Math.max(0, boardHeight - visualHeight))
+		left = clamp(left, 0, Math.max(0, boardWidth - visualWidth))
+		top = clamp(top, 0, Math.max(0, boardHeight - visualHeight))
 
 			// 移动到下一个随机索引
 			this.currentRandomIndex++

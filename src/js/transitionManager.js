@@ -30,36 +30,29 @@ export class TransitionManager {
 
 		// 获取所有卡片
 		const board = document.getElementById('board')
-		let boardRectBefore = null
-		let boardRectAfter = null
-		let deltaX = 0
-		let deltaY = 0
-
-		if (board && board.classList.contains('text-view-balanced')) {
-			boardRectBefore = board.getBoundingClientRect()
-			board.classList.remove('text-view-balanced', 'text-layout-active')
-			// 强制回流
-			void board.offsetWidth
-			boardRectAfter = board.getBoundingClientRect()
-			deltaX = (boardRectBefore.left - boardRectAfter.left) || 0
-			deltaY = (boardRectBefore.top - boardRectAfter.top) || 0
-		}
-
 		const cards = Array.from(document.querySelectorAll('.card'))
 		if (cards.length === 0) {
 			this.isTransitioning = false
 			return
 		}
 
-		if ((deltaX !== 0 || deltaY !== 0) && boardRectBefore && boardRectAfter) {
-			cards.forEach(card => {
-				const state = stateManager.getCardState(card)
-				if (!state || state.maximized || state.closing) return
-				state.left = (state.left || 0) + deltaX
-				state.top = (state.top || 0) + deltaY
-				card.style.left = `${state.left}px`
-				card.style.top = `${state.top}px`
-			})
+		if (board && board.classList.contains('text-view-balanced')) {
+			const rectBefore = board.getBoundingClientRect()
+			board.classList.remove('text-view-balanced', 'text-layout-active')
+			void board.offsetWidth
+			const rectAfter = board.getBoundingClientRect()
+			const offsetX = (rectBefore.left - rectAfter.left) || 0
+			const offsetY = (rectBefore.top - rectAfter.top) || 0
+
+			if (offsetX || offsetY) {
+				cards.forEach(card => {
+					const state = stateManager.getCardState(card)
+					if (!state || state.maximized || state.closing) return
+					card.dataset.transitionTranslate = `${offsetX},${offsetY}`
+					card.style.transform = `translate(${offsetX}px, ${offsetY}px)`
+				})
+				void board.offsetWidth
+			}
 		}
 
 		// 获取爱心位置坐标
@@ -129,8 +122,18 @@ export class TransitionManager {
 			setTimeout(() => {
 				card.style.left = `${newLeft}px`
 				card.style.top = `${newTop}px`
-				// 将所有卡片恢复到正常大小和无旋转状态
-				card.style.transform = 'scale(1) rotate(0deg)'
+				const translate = card.dataset.transitionTranslate
+				if (translate) {
+					const [tx, ty] = translate.split(',').map(Number)
+					requestAnimationFrame(() => {
+						card.style.transform = `translate(${tx}px, ${ty}px) scale(1) rotate(0deg)`
+						requestAnimationFrame(() => {
+							card.style.transform = 'scale(1) rotate(0deg)'
+						})
+					})
+				} else {
+					card.style.transform = 'scale(1) rotate(0deg)'
+				}
 
 				// 更新状态
 				stateManager.updateCardState(card, {
