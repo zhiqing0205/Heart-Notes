@@ -40,6 +40,11 @@ export class CardManager {
 		return indices
 	}
 
+	updateBoardStageClasses() {
+		if (!this.board) return
+		this.board.classList.toggle('text-layout-active', this.isInTextPhase())
+	}
+
 	/**
 	 * 刷新文字布局和爱心布局的位置数据
 	 * @param {boolean} preserveProgress - 是否保留当前生成进度
@@ -78,6 +83,45 @@ export class CardManager {
 			this.cardsGenerated = 0
 			this.currentPositionIndex = 0
 		}
+
+		this.updateBoardStageClasses()
+	}
+
+	isInTextPhase() {
+		return CONFIG.LAYOUT.USE_TEXT_LAYOUT && this.currentRandomIndex < this.textPositions.length
+	}
+
+	playTextEmphasis() {
+		const board = this.board
+		if (!board) return Promise.resolve()
+
+		return new Promise(resolve => {
+			const className = 'text-emphasis'
+			board.classList.remove(className)
+			// 强制重新计算以便重复触发动画
+			void board.offsetWidth
+
+			let finished = false
+
+			const cleanup = () => {
+				if (finished) return
+				finished = true
+				board.classList.remove(className)
+				board.removeEventListener('animationend', handleEnd)
+				resolve()
+			}
+
+			const handleEnd = (event) => {
+				if (event.target !== board) return
+				cleanup()
+			}
+
+			board.addEventListener('animationend', handleEnd)
+			board.classList.add(className)
+
+			// 防止动画被禁用时无法 resolve
+			setTimeout(cleanup, 1600)
+		})
 	}
 
 	/**
@@ -126,14 +170,25 @@ export class CardManager {
 
 		let left, top
 
+		const inTextPhase = this.isInTextPhase()
+		const textTargetScale = this.isMobile
+			? CONFIG.SCALE.TEXT_MOBILE
+			: CONFIG.SCALE.TEXT_DESKTOP
+		const targetScale = inTextPhase ? textTargetScale : CONFIG.SCALE.NORMAL
+		const initialScaleForAnimation = inTextPhase
+			? Math.max(textTargetScale * 0.82, textTargetScale - 0.12)
+			: (this.isMobile ? CONFIG.SCALE.INITIAL_MOBILE : CONFIG.SCALE.INITIAL_DESKTOP)
+		const visualWidth = cardWidth * targetScale
+		const visualHeight = cardHeight * targetScale
+
 		// 使用文字形状布局或爱心形状布局
-		if (CONFIG.LAYOUT.USE_TEXT_LAYOUT && this.currentRandomIndex < this.textPositions.length) {
+		if (inTextPhase) {
 			// 使用随机索引获取文字坐标点
 			const randomIndex = this.randomizedIndices[this.currentRandomIndex]
 			const position = this.textPositions[randomIndex] || { x: Math.random(), y: Math.random() }
 
-			const availableWidth = Math.max(window.innerWidth - cardWidth - horizontalMargin * 2, 0)
-			const availableHeight = Math.max(window.innerHeight - cardHeight - verticalMargin * 2, 0)
+			const availableWidth = Math.max(window.innerWidth - horizontalMargin * 2, 0)
+			const availableHeight = Math.max(window.innerHeight - verticalMargin * 2, 0)
 
 			const bounds = this.textBounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
 			const rangeX = Math.max(bounds.maxX - bounds.minX, 0.001)
@@ -155,8 +210,8 @@ export class CardManager {
 			const widthBasedHeight = maxWidth / textAspect
 			const heightBasedWidth = maxHeight * textAspect
 
-			let usableWidth
-			let usableHeight
+			let usableWidth = maxWidth
+			let usableHeight = maxHeight
 
 			if (widthBasedHeight <= maxHeight) {
 				usableWidth = maxWidth
@@ -169,8 +224,19 @@ export class CardManager {
 			const offsetX = horizontalMargin + (availableWidth - usableWidth) / 2
 			const offsetY = verticalMargin + (availableHeight - usableHeight) / 2
 
-			left = offsetX + clampedX * usableWidth
-			top = offsetY + clampedY * usableHeight
+			const centerX = offsetX + clampedX * usableWidth
+			const centerY = offsetY + clampedY * usableHeight
+
+			left = centerX - visualWidth / 2
+			top = centerY - visualHeight / 2
+
+			// 保证不会越界
+			const minLeft = horizontalMargin
+			const minTop = verticalMargin
+			const maxLeft = window.innerWidth - horizontalMargin - visualWidth
+			const maxTop = window.innerHeight - verticalMargin - visualHeight
+			left = clamp(left, minLeft, Math.max(minLeft, maxLeft))
+			top = clamp(top, minTop, Math.max(minTop, maxTop))
 
 			// 移动到下一个随机索引
 			this.currentRandomIndex++
@@ -193,34 +259,48 @@ export class CardManager {
 			const position = this.heartPositions[this.currentPositionIndex % this.heartPositions.length]
 
 			// 计算可用区域（考虑卡片尺寸和边距）
-			const availableWidth = window.innerWidth - cardWidth - horizontalMargin * 2
-			const availableHeight = window.innerHeight - cardHeight - verticalMargin * 2
+			const availableWidth = window.innerWidth - horizontalMargin * 2
+			const availableHeight = window.innerHeight - verticalMargin * 2
 
 			// 计算爱心的缩放比例（取较小值以确保完整显示）
 			const scaleRatio = this.isMobile ? 0.82 : 0.98
 			const scale = Math.min(availableWidth, availableHeight) * scaleRatio
 
 			// 将归一化坐标转换为实际像素坐标（居中显示）
-			left = horizontalMargin + (availableWidth - scale) / 2 + position.x * scale
-			top = verticalMargin + (availableHeight - scale) / 2 + position.y * scale
+			const centerX = horizontalMargin + (availableWidth - scale) / 2 + position.x * scale
+			const centerY = verticalMargin + (availableHeight - scale) / 2 + position.y * scale
+
+			left = centerX - visualWidth / 2
+			top = centerY - visualHeight / 2
 
 			// 添加一些随机偏移，让卡片看起来更自然、更密集
-			const randomOffset = this.isMobile ? 8 : 15
+			const randomOffset = this.isMobile ? 4 : 8
 			left += (Math.random() - 0.5) * randomOffset
 			top += (Math.random() - 0.5) * randomOffset
+
+			const minLeft = horizontalMargin
+			const minTop = verticalMargin
+			const maxLeft = window.innerWidth - horizontalMargin - visualWidth
+			const maxTop = window.innerHeight - verticalMargin - visualHeight
+
+			left = clamp(left, minLeft, Math.max(minLeft, maxLeft))
+			top = clamp(top, minTop, Math.max(minTop, maxTop))
 
 			// 循环使用位置
 			this.currentPositionIndex++
 		} else {
-			// 随机生成位置
-			left =
-				horizontalMargin +
-				Math.random() *
-					Math.max(window.innerWidth - cardWidth - horizontalMargin * 2, 0)
-			top =
-				verticalMargin +
-				Math.random() *
-					Math.max(window.innerHeight - cardHeight - verticalMargin * 2, 0)
+			// 随机生成位置（以卡片中心为准）
+			const randomCenterX = horizontalMargin + Math.random() * Math.max(window.innerWidth - horizontalMargin * 2, 0)
+			const randomCenterY = verticalMargin + Math.random() * Math.max(window.innerHeight - verticalMargin * 2, 0)
+			left = randomCenterX - visualWidth / 2
+			top = randomCenterY - visualHeight / 2
+
+			const minLeft = horizontalMargin
+			const minTop = verticalMargin
+			const maxLeft = window.innerWidth - horizontalMargin - visualWidth
+			const maxTop = window.innerHeight - verticalMargin - visualHeight
+			left = clamp(left, minLeft, Math.max(minLeft, maxLeft))
+			top = clamp(top, minTop, Math.max(minTop, maxTop))
 		}
 
 		// 不旋转，保持水平以便识别爱心形状
@@ -245,13 +325,9 @@ export class CardManager {
 		`
 
 		// 初始化卡片状态
-		const initialScale = this.isMobile
-			? CONFIG.SCALE.INITIAL_MOBILE
-			: CONFIG.SCALE.INITIAL_DESKTOP
-
 		stateManager.initCardState(card, {
 			angle,
-			scale: initialScale,
+			scale: initialScaleForAnimation,
 			translateX: 0,
 			translateY: 0,
 			left,
@@ -278,9 +354,9 @@ export class CardManager {
 
 		// 入场动画
 		requestAnimationFrame(() => {
-			stateManager.updateCardState(card, { scale: CONFIG.SCALE.NORMAL })
+			stateManager.updateCardState(card, { scale: targetScale })
 			applyTransform(card, {
-				scale: CONFIG.SCALE.NORMAL,
+				scale: targetScale,
 				rotate: state.angle
 			})
 			card.style.opacity = '1'
@@ -295,9 +371,11 @@ export class CardManager {
 			this.limitCardCount()
 		}
 
-        if (CONFIG.DEBUG) {
-            console.log(`创建卡片后: 活动卡片数 = ${stateManager.getActiveCardCount()}`)
-        }
+		this.updateBoardStageClasses()
+
+		if (CONFIG.DEBUG) {
+			console.log(`创建卡片后: 活动卡片数 = ${stateManager.getActiveCardCount()}`)
+		}
 	}
 
 	/**

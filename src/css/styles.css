@@ -102,11 +102,21 @@ body.is-mobile {
 	width: 100vw;
 	height: 100dvh;
 	overflow: hidden;
+	transform-origin: center;
 }
 
 body.is-mobile #board {
 	height: 100dvh;
 	overflow: hidden;
+}
+
+#board.text-layout-active .card {
+	box-shadow: 0 8px 18px var(--card-shadow);
+}
+
+#board.text-layout-active .card .card-body,
+#board.text-layout-active .card .card-header {
+	filter: saturate(1.05);
 }
 
 .card {
@@ -773,6 +783,76 @@ body.light-theme .card-body {
 	height: 100vh;
 	pointer-events: none;
 	z-index: 1000;
+}
+
+@keyframes textStageEmphasis {
+	0% {
+		transform: scale(1);
+	}
+	35% {
+		transform: scale(1.05);
+	}
+	70% {
+		transform: scale(0.98);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes textCardHighlight {
+	0% {
+		filter: saturate(0.9) brightness(0.98);
+	}
+	45% {
+		filter: saturate(1.18) brightness(1.08);
+	}
+	100% {
+		filter: saturate(1) brightness(1);
+	}
+}
+
+@keyframes heartReveal {
+	0% {
+		transform: scale(0.94);
+		filter: brightness(0.92);
+	}
+	50% {
+		transform: scale(1.06);
+		filter: brightness(1.08);
+	}
+	100% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+}
+
+@keyframes heartCardGlow {
+	0% {
+		box-shadow: 0 8px 18px rgba(255, 140, 180, 0.25);
+	}
+	55% {
+		box-shadow: 0 18px 48px rgba(255, 160, 200, 0.45);
+	}
+	100% {
+		box-shadow: 0 12px 24px var(--card-shadow);
+	}
+}
+
+#board.text-emphasis {
+	animation: textStageEmphasis 1.4s ease-in-out both;
+}
+
+#board.text-emphasis .card {
+	animation: textCardHighlight 1.4s ease-in-out both;
+}
+
+#board.heart-emphasis {
+	animation: heartReveal 1.2s ease-out both;
+}
+
+#board.heart-emphasis .card {
+	animation: heartCardGlow 1.2s ease-out both;
 }
 
 /* 心跳动画 */

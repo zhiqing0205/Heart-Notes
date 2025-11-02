@@ -54,8 +54,8 @@ export class TransitionManager {
 			: CONFIG.SPACING.DESKTOP_VERTICAL
 
 		// 计算可用区域
-		const availableWidth = window.innerWidth - cardWidth - horizontalMargin * 2
-		const availableHeight = window.innerHeight - cardHeight - verticalMargin * 2
+		const availableWidth = window.innerWidth - horizontalMargin * 2
+		const availableHeight = window.innerHeight - verticalMargin * 2
 
 		// 计算爱心的缩放比例
 		const scaleRatio = isMobile ? 0.82 : 0.98
@@ -74,13 +74,24 @@ export class TransitionManager {
 			const heartPosition = heartPositions[index % heartPositions.length]
 
 			// 计算新位置
-			let newLeft = centerOffsetX + heartPosition.x * scale
-			let newTop = centerOffsetY + heartPosition.y * scale
+			let centerX = centerOffsetX + heartPosition.x * scale
+			let centerY = centerOffsetY + heartPosition.y * scale
+			const targetScale = 1
+			const visualWidth = cardWidth * targetScale
+			const visualHeight = cardHeight * targetScale
+			let newLeft = centerX - visualWidth / 2
+			let newTop = centerY - visualHeight / 2
 
 			// 添加随机偏移
-			const randomOffset = isMobile ? 8 : 15
+			const randomOffset = isMobile ? 4 : 10
 			newLeft += (Math.random() - 0.5) * randomOffset
 			newTop += (Math.random() - 0.5) * randomOffset
+			const minLeft = horizontalMargin
+			const minTop = verticalMargin
+			const maxLeft = window.innerWidth - horizontalMargin - visualWidth
+			const maxTop = window.innerHeight - verticalMargin - visualHeight
+			newLeft = Math.min(Math.max(newLeft, minLeft), Math.max(minLeft, maxLeft))
+			newTop = Math.min(Math.max(newTop, minTop), Math.max(minTop, maxTop))
 
 			// 添加过渡样式（包括 transform 的过渡）
 			const delay = index * 8 // 错落延迟（ms）
@@ -121,9 +132,37 @@ export class TransitionManager {
 
 			console.log('过渡动画完成')
 
-			// 启动心跳动画
-			this.startHeartbeat()
+			this.runHeartEmphasis().then(() => this.startHeartbeat())
 		}, totalDuration)
+	}
+
+	runHeartEmphasis() {
+		const board = document.getElementById('board')
+		if (!board) return Promise.resolve()
+
+		return new Promise(resolve => {
+			const className = 'heart-emphasis'
+			board.classList.remove(className)
+			void board.offsetWidth
+			let finished = false
+
+			const cleanup = () => {
+				if (finished) return
+				finished = true
+				board.classList.remove(className)
+				board.removeEventListener('animationend', handleEnd)
+				resolve()
+			}
+
+			const handleEnd = (event) => {
+				if (event.target !== board) return
+				cleanup()
+			}
+
+			board.addEventListener('animationend', handleEnd)
+			board.classList.add(className)
+			setTimeout(cleanup, 1800)
+		})
 	}
 
 	/**
@@ -161,6 +200,10 @@ export class TransitionManager {
 	 */
 	reset() {
 		this.stopHeartbeat()
+		const board = document.getElementById('board')
+		if (board) {
+			board.classList.remove('text-emphasis', 'heart-emphasis')
+		}
 		this.isTransitioning = false
 		this.hasTransitioned = false
 	}

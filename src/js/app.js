@@ -56,10 +56,18 @@ class App {
 			if (CONFIG.DEBUG) console.log('所有文字卡片已生成完毕，准备过渡到爱心')
 			// 延迟一小段时间，让最后的卡片完成动画
 			setTimeout(() => {
-				if (CONFIG.LAYOUT.TRANSITION_TO_HEART) {
-					this.transitionManager.startTransition()
-				}
-			}, 500)
+				const emphasisPromise = CONFIG.LAYOUT.USE_TEXT_LAYOUT
+					? this.cardManager.playTextEmphasis()
+					: Promise.resolve()
+
+				emphasisPromise
+					.catch(() => {})
+					.finally(() => {
+						if (CONFIG.LAYOUT.TRANSITION_TO_HEART) {
+							this.transitionManager.startTransition()
+						}
+					})
+			}, 480)
 		}
 
 		// 初始化粒子效果管理器
