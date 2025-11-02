@@ -120,9 +120,11 @@ export const CONFIG = {
 		TRANSITION_DURATION: 350,
 		INITIAL_SPAWN_DELAY_DESKTOP: 20,
 		INITIAL_SPAWN_DELAY_MOBILE: 30,
-		SPAWN_INTERVAL_DESKTOP: 250, 
-		SPAWN_INTERVAL_MOBILE: 180, 
-		RESIZE_DEBOUNCE: 300
+		SPAWN_INTERVAL_DESKTOP: 250,
+		SPAWN_INTERVAL_MOBILE: 180,
+		RESIZE_DEBOUNCE: 300,
+		TEXT_EMPHASIS_DURATION: 1800,
+		TEXT_EMPHASIS_HOLD: 700
 	},
 
 	// 卡片数量限制
@@ -155,10 +157,14 @@ export const CONFIG = {
 	SCALE: {
 		INITIAL_DESKTOP: 0.7,
 		INITIAL_MOBILE: 0.85,
-		TEXT_DESKTOP: 0.62,
-		TEXT_MOBILE: 0.7,
+		TEXT_DESKTOP: 0.48,
+		TEXT_MOBILE: 0.58,
 		NORMAL: 1,
 		MINIMIZED: 0.1
+	},
+
+	BACKGROUND: {
+		HEART_IMAGE: 'https://img.ziuch.top/i/2025/11/02/r3u2c4.jpg'
 	},
 
 	// 移动端检测断点
@@ -224,7 +230,10 @@ export const CONFIG = {
 			ctx.fillStyle = '#000'
 			ctx.textBaseline = 'top'
 
-			// 绘制文字
+			const letterBounds = []
+			const boundPadding = fontSize * 0.08
+
+			// 绘制文字并记录每个字母的包围盒
 			if (isMobile) {
 				// 移动端：竖排文字（从上到下）
 				const totalHeight = fontSize * text.length + letterSpacing * (text.length - 1)
@@ -235,6 +244,14 @@ export const CONFIG = {
 					const x = (canvas.width - charMetrics.width) / 2
 					const y = startY + i * (fontSize + letterSpacing)
 					ctx.fillText(char, x, y)
+
+					letterBounds.push({
+						index: i,
+						minX: x - boundPadding,
+						maxX: x + charMetrics.width + boundPadding,
+						minY: y - boundPadding,
+						maxY: y + fontSize + boundPadding
+					})
 				}
 			} else {
 				// 桌面端：横排文字
@@ -242,8 +259,17 @@ export const CONFIG = {
 				const offsetY = (canvas.height - textHeight) / 2
 				for (let i = 0; i < text.length; i++) {
 					const char = text[i]
-					ctx.fillText(char, offsetX, offsetY)
 					const charWidth = ctx.measureText(char).width
+					ctx.fillText(char, offsetX, offsetY)
+
+					letterBounds.push({
+						index: i,
+						minX: offsetX - boundPadding,
+						maxX: offsetX + charWidth + boundPadding,
+						minY: offsetY - boundPadding,
+						maxY: offsetY + fontSize + boundPadding
+					})
+
 					offsetX += charWidth + letterSpacing
 				}
 			}
@@ -251,7 +277,8 @@ export const CONFIG = {
 			// 采样像素点（减小步长，增加密度）
 			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 			const pixels = imageData.data
-			const positions = []
+			const letterPoints = Array.from({ length: text.length }, () => [])
+			const positionsRaw = []
 
 			// 采样步长（减小以获得更多点，避免遮挡）
 			const step = Math.max(2, Math.floor(fontSize / 40))
@@ -263,11 +290,27 @@ export const CONFIG = {
 
 					// 如果像素不透明，记录位置
 					if (alpha > 128) {
-						// 归一化坐标到 [0, 1]
-						positions.push({
+						const normalized = {
 							x: x / canvas.width,
 							y: y / canvas.height
-						})
+						}
+						let letterIndex = 0
+						for (let i = 0; i < letterBounds.length; i++) {
+							const bound = letterBounds[i]
+							if (
+								x >= bound.minX &&
+								x <= bound.maxX &&
+								y >= bound.minY &&
+								y <= bound.maxY
+							) {
+								letterIndex = bound.index
+								break
+							}
+						}
+
+						const point = { ...normalized, letterIndex }
+						letterPoints[letterIndex].push(point)
+						positionsRaw.push(point)
 					}
 				}
 			}
@@ -289,27 +332,95 @@ export const CONFIG = {
 				return { minX, maxX, minY, maxY }
 			}
 
+			const evenSample = (points, count) => {
+				if (count <= 0) return []
+				if (points.length <= count) {
+					return points.map(p => ({ ...p }))
+				}
+				const stepSize = points.length / count
+				const selected = []
+				let cursor = 0
+				const used = new Set()
+				for (let i = 0; i < count; i++) {
+					let candidateIndex = Math.floor(cursor)
+					if (candidateIndex >= points.length) candidateIndex = points.length - 1
+					while (used.has(candidateIndex) && candidateIndex < points.length - 1) {
+						candidateIndex++
+					}
+					while (used.has(candidateIndex) && candidateIndex > 0) {
+						candidateIndex--
+					}
+					used.add(candidateIndex)
+					selected.push({ ...points[candidateIndex] })
+					cursor += stepSize
+				}
+				return selected
+			}
+
 			const targetCount = isMobile
 				? CONFIG.LIMITS.MAX_CARDS_MOBILE
 				: CONFIG.LIMITS.MAX_CARDS_DESKTOP
 
-			let sampledPositions = positions
+			const totalSamples = positionsRaw.length || 1
+			let quotas = letterPoints.map(group => (group.length ? Math.max(1, Math.round((group.length / totalSamples) * targetCount)) : 0))
+			let sumQuota = quotas.reduce((sum, q) => sum + q, 0)
 
-			if (targetCount && sampledPositions.length > targetCount) {
-				const ratio = sampledPositions.length / targetCount
-				const reduced = []
-				for (let i = 0; i < targetCount; i++) {
-					const index = Math.floor(i * ratio)
-					const clampedIndex = Math.min(index, sampledPositions.length - 1)
-					reduced.push(sampledPositions[clampedIndex])
+			if (sumQuota > targetCount) {
+				while (sumQuota > targetCount) {
+					const idx = quotas.findIndex(q => q > 1)
+					if (idx === -1) break
+					quotas[idx]--
+					sumQuota--
 				}
-				sampledPositions = reduced
 			}
 
-			const bounds = computeBounds(sampledPositions)
+			if (sumQuota < targetCount) {
+				let safety = 0
+				while (sumQuota < targetCount && safety < 1000) {
+					let boosted = false
+					for (let i = 0; i < quotas.length && sumQuota < targetCount; i++) {
+						if (letterPoints[i].length > quotas[i]) {
+							quotas[i]++
+							sumQuota++
+							boosted = true
+						}
+					}
+					if (!boosted) break
+					safety++
+				}
+			}
+
+			const positions = []
+			const groups = []
+			let indexCounter = 0
+
+			for (let i = 0; i < letterPoints.length; i++) {
+				const quota = Math.min(quotas[i], targetCount - positions.length)
+				const sampled = evenSample(letterPoints[i], quota)
+				const sorted = sampled.sort((a, b) => {
+					if (isMobile) {
+						return a.x - b.x || a.y - b.y
+					}
+					return a.y - b.y || a.x - b.x
+				})
+
+				const groupIndices = []
+				for (const point of sorted) {
+					const entry = { ...point, letterIndex: i }
+					positions.push(entry)
+					groupIndices.push(indexCounter)
+					indexCounter++
+				}
+				groups.push(groupIndices)
+			}
+
+			const bounds = computeBounds(positions)
+			const spawnOrder = groups.flat()
 
 			return {
-				positions: sampledPositions,
+				positions,
+				groups,
+				spawnOrder,
 				bounds,
 				canvasSize: {
 					width: canvas.width,

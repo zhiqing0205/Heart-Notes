@@ -41,6 +41,10 @@ class App {
 	init() {
 		if (CONFIG.DEBUG) console.log('初始化便签墙应用')
 		this.isRunning = true
+		if (typeof document !== 'undefined') {
+			document.body.classList.remove('heart-theme')
+			document.body.style.removeProperty('--heart-bg-image')
+		}
 
 		// 初始化音乐控制管理器（在主应用页面）
 		musicControlManager.init()
@@ -64,7 +68,10 @@ class App {
 					.catch(() => {})
 					.finally(() => {
 						if (CONFIG.LAYOUT.TRANSITION_TO_HEART) {
-							this.transitionManager.startTransition()
+							const holdDuration = CONFIG.ANIMATION.TEXT_EMPHASIS_HOLD || 0
+							setTimeout(() => {
+								this.transitionManager.startTransition()
+							}, holdDuration)
 						}
 					})
 			}, 480)
@@ -251,7 +258,9 @@ class App {
 		// 使用卡片管理器中的实际目标数量
 		const maxCards = this.cardManager.totalCardsToGenerate
 		const currentCount = stateManager.getActiveCardCount()
-		console.log(`当前卡片数: ${currentCount}, 目标: ${maxCards}`)
+		if (CONFIG.DEBUG) {
+			console.log(`当前卡片数: ${currentCount}, 目标: ${maxCards}`)
+		}
 
 		if (currentCount < maxCards) {
 			// 小突发：在高FPS时一次生成最多2张

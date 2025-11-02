@@ -21,6 +21,7 @@ export class CardManager {
 		this.currentPositionIndex = 0
 		this.currentRandomIndex = 0
 		this.randomizedIndices = []
+		this.textSpawnOrder = []
 		this.totalCardsToGenerate = 0
 		this.cardsGenerated = 0
 		this.onAllCardsGenerated = null // 回调函数
@@ -42,7 +43,12 @@ export class CardManager {
 
 	updateBoardStageClasses() {
 		if (!this.board) return
-		this.board.classList.toggle('text-layout-active', this.isInTextPhase())
+		const inTextPhase = this.isInTextPhase()
+		this.board.classList.toggle('text-layout-active', inTextPhase)
+		if (inTextPhase && typeof document !== 'undefined') {
+			document.body.classList.remove('heart-theme')
+			document.body.style.removeProperty('--heart-bg-image')
+		}
 	}
 
 	/**
@@ -53,22 +59,50 @@ export class CardManager {
 		const textLayout = CONFIG.LAYOUT.getTextPositions(this.isMobile) || {}
 		const heartLayout = CONFIG.LAYOUT.getHeartPositions() || []
 
-		const textPositions = Array.isArray(textLayout.positions)
+		const rawTextPositions = Array.isArray(textLayout.positions)
 			? textLayout.positions
 			: []
 		const heartPositions = Array.isArray(heartLayout)
 			? heartLayout
 			: []
 
-		const targetTotal = Math.min(textPositions.length, heartPositions.length)
+		const targetTotal = Math.min(rawTextPositions.length, heartPositions.length)
 
 		this.textBounds = textLayout.bounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-		this.textPositions = textPositions.slice(0, targetTotal)
+		this.textPositions = rawTextPositions.slice(0, targetTotal).map((pos, idx) => ({
+			...pos,
+			index: idx
+		}))
+
+		const spawnOrderFromLayout = Array.isArray(textLayout.spawnOrder)
+			? textLayout.spawnOrder.filter(
+				index => Number.isInteger(index) && index >= 0 && index < this.textPositions.length
+			)
+			: []
+
+		const dedupedSpawnOrder = []
+		const seen = new Set()
+		for (const idx of spawnOrderFromLayout) {
+			if (!seen.has(idx)) {
+				dedupedSpawnOrder.push(idx)
+				seen.add(idx)
+			}
+		}
+		for (let i = 0; i < this.textPositions.length; i++) {
+			if (!seen.has(i)) {
+				dedupedSpawnOrder.push(i)
+				seen.add(i)
+			}
+		}
+
+		this.randomizedIndices = dedupedSpawnOrder.length
+			? dedupedSpawnOrder
+			: this.shuffleIndices(this.textPositions.length)
+		this.textSpawnOrder = this.randomizedIndices.slice()
+
 		const heartCount = targetTotal || heartPositions.length
 		this.heartPositions = heartPositions.slice(0, heartCount)
 		this.totalCardsToGenerate = heartCount
-
-		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
 
 		if (preserveProgress) {
 			const activeCount = stateManager.getActiveCardCount()
@@ -102,6 +136,7 @@ export class CardManager {
 			void board.offsetWidth
 
 			let finished = false
+			const emphasisDuration = CONFIG.ANIMATION.TEXT_EMPHASIS_DURATION || 1600
 
 			const cleanup = () => {
 				if (finished) return
@@ -120,7 +155,7 @@ export class CardManager {
 			board.classList.add(className)
 
 			// 防止动画被禁用时无法 resolve
-			setTimeout(cleanup, 1600)
+			setTimeout(cleanup, emphasisDuration)
 		})
 	}
 
@@ -144,7 +179,8 @@ export class CardManager {
 		// 随机选择颜色和消息，最后两张卡片使用彩蛋文案
 		// 根据当前主题选择颜色索引
 		const colors = themeManager.getColors()
-		const colorIndex = Math.floor(Math.random() * colors.length)
+		let colorIndex = Math.floor(Math.random() * colors.length)
+		let letterIndexForCard = null
 		let message
 		if (isSecondLastCard) {
 			message = CONFIG.LAYOUT.EASTER_EGG_MESSAGES[0]
@@ -186,6 +222,8 @@ export class CardManager {
 			// 使用随机索引获取文字坐标点
 			const randomIndex = this.randomizedIndices[this.currentRandomIndex]
 			const position = this.textPositions[randomIndex] || { x: Math.random(), y: Math.random() }
+			letterIndexForCard = typeof position.letterIndex === 'number' ? position.letterIndex : 0
+			colorIndex = colors.length ? letterIndexForCard % colors.length : colorIndex
 
 			const availableWidth = Math.max(window.innerWidth - horizontalMargin * 2, 0)
 			const availableHeight = Math.max(window.innerHeight - verticalMargin * 2, 0)
@@ -323,6 +361,14 @@ export class CardManager {
 			</div>
 			<div class="card-body">${message}</div>
 		`
+
+		if (inTextPhase) {
+			card.classList.add('text-phase-card')
+		}
+
+		if (letterIndexForCard !== null) {
+			card.setAttribute('data-letter-index', String(letterIndexForCard))
+		}
 
 		// 初始化卡片状态
 		stateManager.initCardState(card, {

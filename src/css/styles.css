@@ -93,6 +93,14 @@ body {
 	height: 100%;
 }
 
+body.heart-theme {
+	background-color: #100f1a;
+	background-image: var(--heart-bg-image, none);
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
 body.is-mobile {
 	overflow: hidden;
 }
@@ -117,6 +125,14 @@ body.is-mobile #board {
 #board.text-layout-active .card .card-body,
 #board.text-layout-active .card .card-header {
 	filter: saturate(1.05);
+}
+
+.card.text-phase-card {
+	border-color: rgba(255, 255, 255, 0.22);
+}
+
+body.light-theme .card.text-phase-card {
+	border-color: rgba(0, 0, 0, 0.2);
 }
 
 .card {
@@ -840,11 +856,11 @@ body.light-theme .card-body {
 }
 
 #board.text-emphasis {
-	animation: textStageEmphasis 1.4s ease-in-out both;
+	animation: textStageEmphasis 1.8s ease-in-out both;
 }
 
 #board.text-emphasis .card {
-	animation: textCardHighlight 1.4s ease-in-out both;
+	animation: textCardHighlight 1.8s ease-in-out both;
 }
 
 #board.heart-emphasis {
