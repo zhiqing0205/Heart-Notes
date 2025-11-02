@@ -97,7 +97,7 @@ body.heart-theme {
 	background-color: #100f1a;
 	background-image: var(--heart-bg-image, none);
 	background-size: cover;
-	background-position: center;
+	background-position: center center;
 	background-repeat: no-repeat;
 }
 
@@ -168,6 +168,14 @@ body.is-mobile #board {
 
 body.light-theme .card.text-phase-card {
 	border-color: rgba(0, 0, 0, 0.2);
+}
+
+#board.heart-background {
+	background-image: var(--heart-bg-image, none);
+	background-size: cover;
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-color: #0f0e19;
 }
 
 .card {

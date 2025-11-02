@@ -53,6 +53,10 @@ export class CardManager {
 			document.body.classList.remove('heart-theme')
 			document.body.style.removeProperty('--heart-bg-image')
 		}
+		if (inTextPhase) {
+			this.board.classList.remove('heart-background', 'heart-emphasis', 'heartbeat-animation')
+			this.board.style.removeProperty('--heart-bg-image')
+		}
 	}
 
 	/**

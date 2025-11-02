@@ -173,8 +173,9 @@ export class TransitionManager {
 		const board = document.getElementById('board')
 		if (!board) return
 
-		// 为 board 添加心跳动画类
-		board.classList.add('heartbeat-animation')
+		// 为 board 添加心跳动画及背景
+		board.classList.add('heartbeat-animation', 'heart-background')
+		board.style.setProperty('--heart-bg-image', `url('${CONFIG.BACKGROUND.HEART_IMAGE}')`)
 		if (typeof document !== 'undefined') {
 			document.body.style.setProperty('--heart-bg-image', `url('${CONFIG.BACKGROUND.HEART_IMAGE}')`)
 			document.body.classList.add('heart-theme')
@@ -207,7 +208,8 @@ export class TransitionManager {
 		this.stopHeartbeat()
 		const board = document.getElementById('board')
 		if (board) {
-			board.classList.remove('text-emphasis', 'heart-emphasis')
+			board.classList.remove('text-emphasis', 'heart-emphasis', 'heart-background')
+			board.style.removeProperty('--heart-bg-image')
 		}
 		if (typeof document !== 'undefined') {
 			document.body.classList.remove('heart-theme')
