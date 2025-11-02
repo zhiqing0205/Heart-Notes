@@ -246,14 +246,14 @@ export class CardManager {
 		const boardHeight = boardRect.height || window.innerHeight * 0.55
 
 		const paddingX = this.isMobile
-			? Math.max(12, boardWidth * 0.05)
-			: Math.max(36, boardWidth * 0.1)
+			? Math.max(16, boardWidth * 0.07)
+			: Math.max(48, boardWidth * 0.14)
 		const paddingY = this.isMobile
-			? Math.max(12, boardHeight * 0.07)
-			: Math.max(40, boardHeight * 0.16)
+			? Math.max(18, boardHeight * 0.08)
+			: Math.max(52, boardHeight * 0.2)
 
-		const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth * 1.2)
-		const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight * 1.2)
+		const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth * 1.3)
+		const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight * 1.25)
 
 		const centerX = paddingX + clampedX * usableWidth
 		const centerY = paddingY + clampedY * usableHeight

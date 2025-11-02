@@ -131,6 +131,7 @@ export class TransitionManager {
 							card.style.transform = 'scale(1) rotate(0deg)'
 						})
 					})
+ 					delete card.dataset.transitionTranslate
 				} else {
 					card.style.transform = 'scale(1) rotate(0deg)'
 				}
