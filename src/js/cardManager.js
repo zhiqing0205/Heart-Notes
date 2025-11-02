@@ -235,49 +235,36 @@ export class CardManager {
 			letterIndexForCard = typeof position.letterIndex === 'number' ? position.letterIndex : 0
 			colorIndex = colors.length ? letterIndexForCard % colors.length : colorIndex
 
-			const availableWidth = Math.max(window.innerWidth - horizontalMargin * 2, 0)
-			const availableHeight = Math.max(window.innerHeight - verticalMargin * 2, 0)
-
 			const bounds = this.textBounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
 			const rangeX = Math.max(bounds.maxX - bounds.minX, 0.001)
 			const rangeY = Math.max(bounds.maxY - bounds.minY, 0.001)
 			const normalizedX = (position.x - bounds.minX) / rangeX
 			const normalizedY = (position.y - bounds.minY) / rangeY
-
 			const clampedX = Math.min(1, Math.max(0, normalizedX))
 			const clampedY = Math.min(1, Math.max(0, normalizedY))
 
-		const textAspect = Math.max(rangeX / rangeY, 0.1)
-		const widthPaddingRatio = this.isMobile ? 0.92 : 0.88
-		const heightPaddingRatio = this.isMobile ? 0.92 : 0.7
-		const maxWidth = availableWidth * widthPaddingRatio
-		const maxHeight = availableHeight * heightPaddingRatio
-		const widthBasedHeight = maxWidth / textAspect
-		const heightBasedWidth = maxHeight * textAspect
-		let usableWidth = maxWidth
-		let usableHeight = maxHeight
-		if (widthBasedHeight <= maxHeight) {
-			usableWidth = maxWidth
-			usableHeight = widthBasedHeight
-		} else {
-			usableWidth = heightBasedWidth
-			usableHeight = maxHeight
-		}
-		const offsetX = horizontalMargin + (availableWidth - usableWidth) / 2
-		const offsetY = verticalMargin + (availableHeight - usableHeight) / 2 + (this.isMobile ? 0 : availableHeight * 0.02)
-		const centerX = offsetX + clampedX * usableWidth
-		const centerY = offsetY + clampedY * usableHeight
+			const boardRect = this.board.getBoundingClientRect()
+			const boardWidth = boardRect.width || window.innerWidth
+			const boardHeight = boardRect.height || window.innerHeight * 0.55
+
+			const paddingX = this.isMobile
+				? Math.max(12, boardWidth * 0.04)
+				: Math.max(28, boardWidth * 0.08)
+			const paddingY = this.isMobile
+				? Math.max(12, boardHeight * 0.06)
+				: Math.max(32, boardHeight * 0.12)
+
+			const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth)
+			const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight)
+
+			const centerX = paddingX + clampedX * usableWidth
+			const centerY = paddingY + clampedY * usableHeight
 
 			left = centerX - visualWidth / 2
 			top = centerY - visualHeight / 2
 
-			// 保证不会越界
-			const minLeft = horizontalMargin
-			const minTop = verticalMargin
-			const maxLeft = window.innerWidth - horizontalMargin - visualWidth
-			const maxTop = window.innerHeight - verticalMargin - visualHeight
-			left = clamp(left, minLeft, Math.max(minLeft, maxLeft))
-			top = clamp(top, minTop, Math.max(minTop, maxTop))
+			left = clamp(left, 0, Math.max(0, boardWidth - visualWidth))
+			top = clamp(top, 0, Math.max(0, boardHeight - visualHeight))
 
 			// 移动到下一个随机索引
 			this.currentRandomIndex++
