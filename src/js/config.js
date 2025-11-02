@@ -182,27 +182,130 @@ export const CONFIG = {
 	// 爱心形状布局
 	LAYOUT: {
 		USE_HEART_SHAPE: true, // 是否使用爱心形状布局
+		USE_TEXT_LAYOUT: true, // 是否使用文字布局（ZIUCH）
+		TRANSITION_TO_HEART: true, // 是否在文字显示完后过渡到爱心
 		EASTER_EGG_MESSAGES: [
 			'为自己的人生鲜艳上色',
 			'先把爱涂上喜欢的颜色'
 		], // 彩蛋：最后两张卡片的固定文案（倒数第二张、最后一张）
+
+		// ZIUCH 文字坐标生成函数
+		// 使用 Canvas 路径采样生成文字轮廓点
+		getTextPositions: (isMobile = false) => {
+			// 创建临时 Canvas
+			const canvas = document.createElement('canvas')
+			const ctx = canvas.getContext('2d')
+
+			const text = 'ZIUCH'
+			const fontSize = isMobile ? 120 : 100
+			const letterSpacing = isMobile ? 0 : 20
+
+			// 设置字体（使用粗体以便有更多点）
+			ctx.font = `bold ${fontSize}px Arial, sans-serif`
+
+			// 计算文字总宽度
+			const metrics = ctx.measureText(text)
+			const textWidth = metrics.width + letterSpacing * (text.length - 1)
+			const textHeight = fontSize
+
+			// 设置 Canvas 尺寸
+			canvas.width = isMobile ? textHeight * 1.2 : textWidth * 1.2
+			canvas.height = isMobile ? textWidth * 1.5 : textHeight * 1.5
+
+			ctx.font = `bold ${fontSize}px Arial, sans-serif`
+			ctx.fillStyle = '#000'
+			ctx.textBaseline = 'top'
+
+			// 绘制文字
+			if (isMobile) {
+				// 移动端：竖排文字（从上到下）
+				const startY = (canvas.height - (fontSize * text.length + letterSpacing * (text.length - 1))) / 2
+				for (let i = 0; i < text.length; i++) {
+					const char = text[i]
+					const charMetrics = ctx.measureText(char)
+					const x = (canvas.width - charMetrics.width) / 2
+					const y = startY + i * (fontSize + letterSpacing)
+					ctx.fillText(char, x, y)
+				}
+			} else {
+				// 桌面端：横排文字
+				let offsetX = (canvas.width - textWidth) / 2
+				const offsetY = (canvas.height - textHeight) / 2
+				for (let i = 0; i < text.length; i++) {
+					const char = text[i]
+					ctx.fillText(char, offsetX, offsetY)
+					const charWidth = ctx.measureText(char).width
+					offsetX += charWidth + letterSpacing
+				}
+			}
+
+			// 采样像素点
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+			const pixels = imageData.data
+			const positions = []
+
+			// 采样步长（控制点的密度）
+			const step = isMobile ? 6 : 5
+
+			for (let y = 0; y < canvas.height; y += step) {
+				for (let x = 0; x < canvas.width; x += step) {
+					const index = (y * canvas.width + x) * 4
+					const alpha = pixels[index + 3]
+
+					// 如果像素不透明，记录位置
+					if (alpha > 128) {
+						// 归一化坐标到 [0, 1]
+						positions.push({
+							x: x / canvas.width,
+							y: y / canvas.height
+						})
+					}
+				}
+			}
+
+			// 如果点太多，进行采样（限制在约 200 个点）
+			const targetPoints = 200
+			if (positions.length > targetPoints) {
+				const step = Math.floor(positions.length / targetPoints)
+				const sampled = []
+				for (let i = 0; i < positions.length; i += step) {
+					sampled.push(positions[i])
+				}
+				return sampled
+			}
+
+			return positions
+		},
+
 		// 爱心形状的参数化坐标点（基于数学公式）
 		// 使用归一化坐标 [0, 1]，将在实际使用时根据屏幕大小缩放
 		getHeartPositions: () => {
 			const positions = []
 			const numPoints = 185 // 增加到185个点（约15%增量）
 
+			// 第一遍：计算所有原始坐标
+			const rawPositions = []
 			for (let i = 0; i < numPoints; i++) {
 				const t = (i / numPoints) * 2 * Math.PI
 				// 爱心参数方程
 				const x = 16 * Math.pow(Math.sin(t), 3)
 				const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))
+				rawPositions.push({ x, y })
+			}
 
-				// 归一化到 [0, 1] 范围
-				// x 范围大约是 [-16, 16], y 范围大约是 [-16, 13]
-				const normalizedX = (x + 16) / 32
-				const normalizedY = (y + 16) / 29
+			// 找出实际的最小值和最大值
+			let minX = Math.min(...rawPositions.map(p => p.x))
+			let maxX = Math.max(...rawPositions.map(p => p.x))
+			let minY = Math.min(...rawPositions.map(p => p.y))
+			let maxY = Math.max(...rawPositions.map(p => p.y))
 
+			const rangeX = maxX - minX
+			const rangeY = maxY - minY
+
+			// 第二遍：归一化到 [0, 1]
+			for (const pos of rawPositions) {
+				const normalizedX = (pos.x - minX) / rangeX
+				const normalizedY = (pos.y - minY) / rangeY
 				positions.push({ x: normalizedX, y: normalizedY })
 			}
 

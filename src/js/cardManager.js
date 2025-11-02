@@ -16,7 +16,29 @@ export class CardManager {
 		this.board = boardElement
 		this.isMobile = isMobileDevice()
 		this.heartPositions = CONFIG.LAYOUT.getHeartPositions()
+		this.textPositions = CONFIG.LAYOUT.getTextPositions(this.isMobile)
 		this.currentPositionIndex = 0
+
+		// 随机化位置索引（Fisher-Yates 洗牌算法）
+		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
+		this.currentRandomIndex = 0
+
+		// 追踪卡片生成进度
+		this.totalCardsToGenerate = this.textPositions.length
+		this.cardsGenerated = 0
+		this.onAllCardsGenerated = null // 回调函数
+	}
+
+	/**
+	 * Fisher-Yates 洗牌算法，随机打乱索引
+	 */
+	shuffleIndices(length) {
+		const indices = Array.from({ length }, (_, i) => i)
+		for (let i = indices.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1))
+			;[indices[i], indices[j]] = [indices[j], indices[i]]
+		}
+		return indices
 	}
 
 	/**
@@ -65,8 +87,43 @@ export class CardManager {
 
 		let left, top
 
-		// 使用爱心形状布局或随机布局
-		if (CONFIG.LAYOUT.USE_HEART_SHAPE) {
+		// 使用文字形状布局或爱心形状布局
+		if (CONFIG.LAYOUT.USE_TEXT_LAYOUT && this.currentRandomIndex < this.textPositions.length) {
+			// 使用随机索引获取文字坐标点
+			const randomIndex = this.randomizedIndices[this.currentRandomIndex]
+			const position = this.textPositions[randomIndex]
+
+			// 计算可用区域（考虑卡片尺寸和边距）
+			const availableWidth = window.innerWidth - cardWidth - horizontalMargin * 2
+			const availableHeight = window.innerHeight - cardHeight - verticalMargin * 2
+
+			// 计算缩放比例
+			const scaleRatio = this.isMobile ? 0.85 : 0.92
+			const scale = Math.min(availableWidth, availableHeight) * scaleRatio
+
+			// 将归一化坐标转换为实际像素坐标（居中显示）
+			left = horizontalMargin + (availableWidth - scale) / 2 + position.x * scale
+			top = verticalMargin + (availableHeight - scale) / 2 + position.y * scale
+
+			// 添加一些随机偏移，让卡片看起来更自然
+			const randomOffset = this.isMobile ? 3 : 5
+			left += (Math.random() - 0.5) * randomOffset
+			top += (Math.random() - 0.5) * randomOffset
+
+			// 移动到下一个随机索引
+			this.currentRandomIndex++
+
+			// 追踪生成进度
+			this.cardsGenerated++
+			if (this.cardsGenerated >= this.totalCardsToGenerate && this.onAllCardsGenerated) {
+				// 延迟触发回调，确保最后一张卡片已经完成渲染
+				setTimeout(() => {
+					if (this.onAllCardsGenerated) {
+						this.onAllCardsGenerated()
+					}
+				}, CONFIG.ANIMATION.TRANSITION_DURATION + 100)
+			}
+		} else if (CONFIG.LAYOUT.USE_HEART_SHAPE) {
 			// 获取当前位置索引对应的爱心坐标点
 			const position = this.heartPositions[this.currentPositionIndex % this.heartPositions.length]
 
@@ -547,9 +604,12 @@ export class CardManager {
 		const wasMobile = this.isMobile
 		this.isMobile = isMobileDevice()
 
-		// 如果移动端状态改变，重新获取爱心位置
+		// 如果移动端状态改变，重新获取位置坐标
 		if (wasMobile !== this.isMobile) {
 			this.heartPositions = CONFIG.LAYOUT.getHeartPositions()
+			this.textPositions = CONFIG.LAYOUT.getTextPositions(this.isMobile)
+			// 重新随机化索引
+			this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
 		}
 	}
 

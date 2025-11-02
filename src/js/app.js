@@ -12,6 +12,7 @@ import { musicControlManager } from './musicControlManager.js'
 import { fullscreenManager } from './fullscreenManager.js'
 import { audioManager } from './audioManager.js'
 import { ParticleEffect } from './particleEffect.js'
+import { TransitionManager } from './transitionManager.js'
 
 /**
  * 应用类
@@ -21,6 +22,7 @@ class App {
 		this.board = document.getElementById('board')
 		this.cardManager = null // 延迟初始化
 		this.particleEffect = null // 粒子效果管理器
+		this.transitionManager = null // 过渡动画管理器
 		this.isMobile = isMobileDevice()
 		this.spawnTimer = null
 		this.spawnTimerType = null // 'timeout' | 'idle'
@@ -45,6 +47,20 @@ class App {
 
 		// 初始化卡片管理器
 		this.cardManager = new CardManager(this.board)
+
+		// 初始化过渡动画管理器
+		this.transitionManager = new TransitionManager(this.cardManager)
+
+		// 设置卡片生成完成回调
+		this.cardManager.onAllCardsGenerated = () => {
+			if (CONFIG.DEBUG) console.log('所有文字卡片已生成完毕，准备过渡到爱心')
+			// 延迟一小段时间，让最后的卡片完成动画
+			setTimeout(() => {
+				if (CONFIG.LAYOUT.TRANSITION_TO_HEART) {
+					this.transitionManager.startTransition()
+				}
+			}, 500)
+		}
 
 		// 初始化粒子效果管理器
 		this.particleEffect = new ParticleEffect(this.board)
