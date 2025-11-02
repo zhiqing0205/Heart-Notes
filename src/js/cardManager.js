@@ -14,11 +14,11 @@ import { themeManager } from './themeManager.js'
 export class CardManager {
 	constructor(boardElement) {
 		this.board = boardElement
-		this.isMobile = isMobileDevice()
-		this.textPositions = []
-		this.textBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-		this.heartPositions = []
-		this.currentPositionIndex = 0
+	this.isMobile = isMobileDevice()
+	this.textPositions = []
+	this.textBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+	this.heartPositions = []
+	this.currentPositionIndex = 0
 		this.currentRandomIndex = 0
 		this.randomizedIndices = []
 		this.textGroups = []
@@ -247,33 +247,26 @@ export class CardManager {
 			const clampedX = Math.min(1, Math.max(0, normalizedX))
 			const clampedY = Math.min(1, Math.max(0, normalizedY))
 
-			const textAspect = Math.max(rangeX / rangeY, 0.1)
-
-			const widthPaddingRatio = this.isMobile ? 0.9 : 0.96
-			const heightPaddingRatio = this.isMobile ? 0.9 : 0.86
-
-			const maxWidth = availableWidth * widthPaddingRatio
-			const maxHeight = availableHeight * heightPaddingRatio
-
-			const widthBasedHeight = maxWidth / textAspect
-			const heightBasedWidth = maxHeight * textAspect
-
-			let usableWidth = maxWidth
-			let usableHeight = maxHeight
-
-			if (widthBasedHeight <= maxHeight) {
-				usableWidth = maxWidth
-				usableHeight = widthBasedHeight
-			} else {
-				usableWidth = heightBasedWidth
-				usableHeight = maxHeight
-			}
-
-			const offsetX = horizontalMargin + (availableWidth - usableWidth) / 2
-			const offsetY = verticalMargin + (availableHeight - usableHeight) / 2
-
-			const centerX = offsetX + clampedX * usableWidth
-			const centerY = offsetY + clampedY * usableHeight
+		const textAspect = Math.max(rangeX / rangeY, 0.1)
+		const widthPaddingRatio = this.isMobile ? 0.92 : 0.88
+		const heightPaddingRatio = this.isMobile ? 0.92 : 0.7
+		const maxWidth = availableWidth * widthPaddingRatio
+		const maxHeight = availableHeight * heightPaddingRatio
+		const widthBasedHeight = maxWidth / textAspect
+		const heightBasedWidth = maxHeight * textAspect
+		let usableWidth = maxWidth
+		let usableHeight = maxHeight
+		if (widthBasedHeight <= maxHeight) {
+			usableWidth = maxWidth
+			usableHeight = widthBasedHeight
+		} else {
+			usableWidth = heightBasedWidth
+			usableHeight = maxHeight
+		}
+		const offsetX = horizontalMargin + (availableWidth - usableWidth) / 2
+		const offsetY = verticalMargin + (availableHeight - usableHeight) / 2 + (this.isMobile ? 0 : availableHeight * 0.02)
+		const centerX = offsetX + clampedX * usableWidth
+		const centerY = offsetY + clampedY * usableHeight
 
 			left = centerX - visualWidth / 2
 			top = centerY - visualHeight / 2
