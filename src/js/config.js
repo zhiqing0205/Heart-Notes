@@ -270,8 +270,50 @@ export const CONFIG = {
 				}
 			}
 
-			// 不再限制点数，返回所有采样点
-			return positions
+			const computeBounds = pts => {
+				if (!pts.length) {
+					return { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+				}
+				let minX = pts[0].x
+				let maxX = pts[0].x
+				let minY = pts[0].y
+				let maxY = pts[0].y
+				for (const p of pts) {
+					if (p.x < minX) minX = p.x
+					if (p.x > maxX) maxX = p.x
+					if (p.y < minY) minY = p.y
+					if (p.y > maxY) maxY = p.y
+				}
+				return { minX, maxX, minY, maxY }
+			}
+
+			const targetCount = isMobile
+				? CONFIG.LIMITS.MAX_CARDS_MOBILE
+				: CONFIG.LIMITS.MAX_CARDS_DESKTOP
+
+			let sampledPositions = positions
+
+			if (targetCount && sampledPositions.length > targetCount) {
+				const ratio = sampledPositions.length / targetCount
+				const reduced = []
+				for (let i = 0; i < targetCount; i++) {
+					const index = Math.floor(i * ratio)
+					const clampedIndex = Math.min(index, sampledPositions.length - 1)
+					reduced.push(sampledPositions[clampedIndex])
+				}
+				sampledPositions = reduced
+			}
+
+			const bounds = computeBounds(sampledPositions)
+
+			return {
+				positions: sampledPositions,
+				bounds,
+				canvasSize: {
+					width: canvas.width,
+					height: canvas.height
+				}
+			}
 		},
 
 		// 爱心形状的参数化坐标点（基于数学公式）

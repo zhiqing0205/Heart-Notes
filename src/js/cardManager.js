@@ -15,18 +15,17 @@ export class CardManager {
 	constructor(boardElement) {
 		this.board = boardElement
 		this.isMobile = isMobileDevice()
-		this.heartPositions = CONFIG.LAYOUT.getHeartPositions()
-		this.textPositions = CONFIG.LAYOUT.getTextPositions(this.isMobile)
+		this.textPositions = []
+		this.textBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+		this.heartPositions = []
 		this.currentPositionIndex = 0
-
-		// 随机化位置索引（Fisher-Yates 洗牌算法）
-		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
 		this.currentRandomIndex = 0
-
-		// 追踪卡片生成进度
-		this.totalCardsToGenerate = this.textPositions.length
+		this.randomizedIndices = []
+		this.totalCardsToGenerate = 0
 		this.cardsGenerated = 0
 		this.onAllCardsGenerated = null // 回调函数
+
+		this.loadLayouts(false)
 	}
 
 	/**
@@ -42,6 +41,46 @@ export class CardManager {
 	}
 
 	/**
+	 * 刷新文字布局和爱心布局的位置数据
+	 * @param {boolean} preserveProgress - 是否保留当前生成进度
+	 */
+	loadLayouts(preserveProgress = false) {
+		const textLayout = CONFIG.LAYOUT.getTextPositions(this.isMobile) || {}
+		const heartLayout = CONFIG.LAYOUT.getHeartPositions() || []
+
+		const textPositions = Array.isArray(textLayout.positions)
+			? textLayout.positions
+			: []
+		const heartPositions = Array.isArray(heartLayout)
+			? heartLayout
+			: []
+
+		const targetTotal = Math.min(textPositions.length, heartPositions.length)
+
+		this.textBounds = textLayout.bounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+		this.textPositions = textPositions.slice(0, targetTotal)
+		const heartCount = targetTotal || heartPositions.length
+		this.heartPositions = heartPositions.slice(0, heartCount)
+		this.totalCardsToGenerate = heartCount
+
+		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
+
+		if (preserveProgress) {
+			const activeCount = stateManager.getActiveCardCount()
+			this.currentRandomIndex = Math.min(activeCount, this.textPositions.length)
+			this.cardsGenerated = Math.max(this.cardsGenerated || 0, this.currentRandomIndex)
+			this.currentPositionIndex = Math.min(
+				this.currentPositionIndex || 0,
+				this.heartPositions.length
+			)
+		} else {
+			this.currentRandomIndex = 0
+			this.cardsGenerated = 0
+			this.currentPositionIndex = 0
+		}
+	}
+
+	/**
 	 * 创建新卡片
 	 */
     createCard() {
@@ -54,7 +93,7 @@ export class CardManager {
 
 		// 彩蛋：判断是否是最后两张卡片（第160和161张）
 		const currentCount = stateManager.getActiveCardCount()
-		const maxCards = CONFIG.LIMITS.MAX_CARDS_DESKTOP
+		const maxCards = this.totalCardsToGenerate || CONFIG.LIMITS.MAX_CARDS_DESKTOP
 		const isSecondLastCard = currentCount === maxCards - 2
 		const isLastCard = currentCount === maxCards - 1
 
@@ -91,24 +130,47 @@ export class CardManager {
 		if (CONFIG.LAYOUT.USE_TEXT_LAYOUT && this.currentRandomIndex < this.textPositions.length) {
 			// 使用随机索引获取文字坐标点
 			const randomIndex = this.randomizedIndices[this.currentRandomIndex]
-			const position = this.textPositions[randomIndex]
+			const position = this.textPositions[randomIndex] || { x: Math.random(), y: Math.random() }
 
-			// 计算可用区域（考虑卡片尺寸和边距）
-			const availableWidth = window.innerWidth - cardWidth - horizontalMargin * 2
-			const availableHeight = window.innerHeight - cardHeight - verticalMargin * 2
+			const availableWidth = Math.max(window.innerWidth - cardWidth - horizontalMargin * 2, 0)
+			const availableHeight = Math.max(window.innerHeight - cardHeight - verticalMargin * 2, 0)
 
-			// 计算缩放比例（占据更大空间）
-			const scaleRatio = this.isMobile ? 0.95 : 0.95
-			const scale = Math.min(availableWidth, availableHeight) * scaleRatio
+			const bounds = this.textBounds || { minX: 0, maxX: 1, minY: 0, maxY: 1 }
+			const rangeX = Math.max(bounds.maxX - bounds.minX, 0.001)
+			const rangeY = Math.max(bounds.maxY - bounds.minY, 0.001)
+			const normalizedX = (position.x - bounds.minX) / rangeX
+			const normalizedY = (position.y - bounds.minY) / rangeY
 
-			// 将归一化坐标转换为实际像素坐标（居中显示）
-			left = horizontalMargin + (availableWidth - scale) / 2 + position.x * scale
-			top = verticalMargin + (availableHeight - scale) / 2 + position.y * scale
+			const clampedX = Math.min(1, Math.max(0, normalizedX))
+			const clampedY = Math.min(1, Math.max(0, normalizedY))
 
-			// 不添加随机偏移，保持文字清晰可辨
-			// const randomOffset = this.isMobile ? 3 : 5
-			// left += (Math.random() - 0.5) * randomOffset
-			// top += (Math.random() - 0.5) * randomOffset
+			const textAspect = Math.max(rangeX / rangeY, 0.1)
+
+			const widthPaddingRatio = this.isMobile ? 0.9 : 0.96
+			const heightPaddingRatio = this.isMobile ? 0.9 : 0.86
+
+			const maxWidth = availableWidth * widthPaddingRatio
+			const maxHeight = availableHeight * heightPaddingRatio
+
+			const widthBasedHeight = maxWidth / textAspect
+			const heightBasedWidth = maxHeight * textAspect
+
+			let usableWidth
+			let usableHeight
+
+			if (widthBasedHeight <= maxHeight) {
+				usableWidth = maxWidth
+				usableHeight = widthBasedHeight
+			} else {
+				usableWidth = heightBasedWidth
+				usableHeight = maxHeight
+			}
+
+			const offsetX = horizontalMargin + (availableWidth - usableWidth) / 2
+			const offsetY = verticalMargin + (availableHeight - usableHeight) / 2
+
+			left = offsetX + clampedX * usableWidth
+			top = offsetY + clampedY * usableHeight
 
 			// 移动到下一个随机索引
 			this.currentRandomIndex++
@@ -612,10 +674,7 @@ export class CardManager {
 
 		// 如果移动端状态改变，重新获取位置坐标
 		if (wasMobile !== this.isMobile) {
-			this.heartPositions = CONFIG.LAYOUT.getHeartPositions()
-			this.textPositions = CONFIG.LAYOUT.getTextPositions(this.isMobile)
-			// 重新随机化索引
-			this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
+			this.loadLayouts(true)
 		}
 	}
 
