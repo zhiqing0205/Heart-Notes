@@ -88,9 +88,9 @@ export class CardManager {
 			const letter = (textLayout.word || this.textWord || 'ZIUCH')[idx] || ''
 			switch (letter.toUpperCase()) {
 				case 'U':
-					return this.isMobile ? 1.12 : 1.22
+					return this.isMobile ? 1.18 : 1.32
 				case 'H':
-					return this.isMobile ? 1.1 : 1.18
+					return this.isMobile ? 1.15 : 1.26
 				default:
 					return 1
 			}
