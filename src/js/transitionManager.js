@@ -29,10 +29,37 @@ export class TransitionManager {
 		console.log('开始过渡动画：ZIUCH → 爱心')
 
 		// 获取所有卡片
+		const board = document.getElementById('board')
+		let boardRectBefore = null
+		let boardRectAfter = null
+		let deltaX = 0
+		let deltaY = 0
+
+		if (board && board.classList.contains('text-view-balanced')) {
+			boardRectBefore = board.getBoundingClientRect()
+			board.classList.remove('text-view-balanced', 'text-layout-active')
+			// 强制回流
+			void board.offsetWidth
+			boardRectAfter = board.getBoundingClientRect()
+			deltaX = (boardRectBefore.left - boardRectAfter.left) || 0
+			deltaY = (boardRectBefore.top - boardRectAfter.top) || 0
+		}
+
 		const cards = Array.from(document.querySelectorAll('.card'))
 		if (cards.length === 0) {
 			this.isTransitioning = false
 			return
+		}
+
+		if ((deltaX !== 0 || deltaY !== 0) && boardRectBefore && boardRectAfter) {
+			cards.forEach(card => {
+				const state = stateManager.getCardState(card)
+				if (!state || state.maximized || state.closing) return
+				state.left = (state.left || 0) + deltaX
+				state.top = (state.top || 0) + deltaY
+				card.style.left = `${state.left}px`
+				card.style.top = `${state.top}px`
+			})
 		}
 
 		// 获取爱心位置坐标

@@ -57,8 +57,6 @@ export class CardManager {
 				document.body.classList.remove('heart-theme')
 				document.body.style.removeProperty('--heart-bg-image')
 			}
-		} else {
-			this.board.classList.remove('text-view-balanced')
 		}
 	}
 
@@ -102,8 +100,8 @@ export class CardManager {
 			this.heartPositions = heartPositions.slice(0, heartCount)
 		}
 
-		const verticalOffset = this.isMobile ? 0.04 : 0.07
-		const horizontalOffset = this.isMobile ? 0 : 0.015
+		const verticalOffset = this.isMobile ? 0.06 : 0.1
+		const horizontalOffset = this.isMobile ? 0 : 0.01
 		this.heartPositions = this.heartPositions.map(pos => ({
 			x: Math.min(1, Math.max(0, pos.x + horizontalOffset)),
 			y: Math.min(1, Math.max(0, pos.y + verticalOffset))

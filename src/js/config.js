@@ -260,7 +260,7 @@ export const CONFIG = {
 			const text = 'ZIUCH'
 			const letters = text.split('')
 			const density = 3
-			const letterSpacing = isMobile ? 2 : 4
+			const letterSpacing = isMobile ? 3 : 8
 
 			const patterns = letters.map(letter => LETTER_PATTERNS[letter] || [])
 			const letterWidths = patterns.map(pattern => (pattern[0] ? pattern[0].length : 0))
