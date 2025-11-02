@@ -21,7 +21,8 @@ export class CardManager {
 		this.currentPositionIndex = 0
 		this.currentRandomIndex = 0
 		this.randomizedIndices = []
-		this.textSpawnOrder = []
+		this.textGroups = []
+		this.textWord = 'ZIUCH'
 		this.totalCardsToGenerate = 0
 		this.cardsGenerated = 0
 		this.onAllCardsGenerated = null // 回调函数
@@ -45,6 +46,9 @@ export class CardManager {
 		if (!this.board) return
 		const inTextPhase = this.isInTextPhase()
 		this.board.classList.toggle('text-layout-active', inTextPhase)
+		if (!this.board.getAttribute('data-text-word')) {
+			this.board.setAttribute('data-text-word', this.textWord || 'ZIUCH')
+		}
 		if (inTextPhase && typeof document !== 'undefined') {
 			document.body.classList.remove('heart-theme')
 			document.body.style.removeProperty('--heart-bg-image')
@@ -74,35 +78,27 @@ export class CardManager {
 			index: idx
 		}))
 
-		const spawnOrderFromLayout = Array.isArray(textLayout.spawnOrder)
-			? textLayout.spawnOrder.filter(
-				index => Number.isInteger(index) && index >= 0 && index < this.textPositions.length
-			)
-			: []
-
-		const dedupedSpawnOrder = []
-		const seen = new Set()
-		for (const idx of spawnOrderFromLayout) {
-			if (!seen.has(idx)) {
-				dedupedSpawnOrder.push(idx)
-				seen.add(idx)
-			}
-		}
-		for (let i = 0; i < this.textPositions.length; i++) {
-			if (!seen.has(i)) {
-				dedupedSpawnOrder.push(i)
-				seen.add(i)
-			}
-		}
-
-		this.randomizedIndices = dedupedSpawnOrder.length
-			? dedupedSpawnOrder
-			: this.shuffleIndices(this.textPositions.length)
-		this.textSpawnOrder = this.randomizedIndices.slice()
+		this.textGroups = Array.isArray(textLayout.groups) ? textLayout.groups : []
+		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
+		this.textWord = textLayout.word || 'ZIUCH'
 
 		const heartCount = targetTotal || heartPositions.length
-		this.heartPositions = heartPositions.slice(0, heartCount)
+		if (heartCount > 0 && heartPositions.length > heartCount) {
+			const step = heartPositions.length / heartCount
+			const sampledHeart = []
+			for (let i = 0; i < heartCount; i++) {
+				const candidateIndex = Math.min(Math.floor(i * step), heartPositions.length - 1)
+				sampledHeart.push({ ...heartPositions[candidateIndex] })
+			}
+			this.heartPositions = sampledHeart
+		} else {
+			this.heartPositions = heartPositions.slice(0, heartCount)
+		}
 		this.totalCardsToGenerate = heartCount
+
+		if (this.board) {
+			this.board.setAttribute('data-text-word', this.textWord)
+		}
 
 		if (preserveProgress) {
 			const activeCount = stateManager.getActiveCardCount()
@@ -281,7 +277,9 @@ export class CardManager {
 
 			// 追踪生成进度
 			this.cardsGenerated++
-			console.log(`卡片生成进度: ${this.cardsGenerated}/${this.totalCardsToGenerate}`)
+			if (CONFIG.DEBUG) {
+				console.log(`卡片生成进度: ${this.cardsGenerated}/${this.totalCardsToGenerate}`)
+			}
 			if (this.cardsGenerated >= this.totalCardsToGenerate && this.onAllCardsGenerated) {
 				console.log('所有卡片已生成，将触发回调')
 				// 延迟触发回调，确保最后一张卡片已经完成渲染

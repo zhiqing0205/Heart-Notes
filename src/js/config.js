@@ -1,6 +1,64 @@
 /**
  * 应用配置常量
  */
+const LETTER_PATTERNS = {
+	Z: [
+		'1111111',
+		'......1',
+		'.....1.',
+		'....1..',
+		'...1...',
+		'..1....',
+		'.1.....',
+		'1......',
+		'1111111'
+	],
+	I: [
+		'..111..',
+		'...1...',
+		'...1...',
+		'...1...',
+		'...1...',
+		'...1...',
+		'...1...',
+		'...1...',
+		'..111..'
+	],
+	U: [
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'.11111.'
+	],
+	C: [
+		'.11111.',
+		'1.....1',
+		'1......',
+		'1......',
+		'1......',
+		'1......',
+		'1......',
+		'1.....1',
+		'.11111.'
+	],
+	H: [
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1111111',
+		'1111111',
+		'1.....1',
+		'1.....1',
+		'1.....1',
+		'1.....1'
+	]
+}
+
 export const CONFIG = {
 	// 调试开关（避免大量日志拖慢页面）
 	DEBUG: false,
@@ -157,8 +215,8 @@ export const CONFIG = {
 	SCALE: {
 		INITIAL_DESKTOP: 0.7,
 		INITIAL_MOBILE: 0.85,
-		TEXT_DESKTOP: 0.48,
-		TEXT_MOBILE: 0.58,
+		TEXT_DESKTOP: 0.58,
+		TEXT_MOBILE: 0.68,
 		NORMAL: 1,
 		MINIMIZED: 0.1
 	},
@@ -197,128 +255,94 @@ export const CONFIG = {
 			'先把爱涂上喜欢的颜色'
 		], // 彩蛋：最后两张卡片的固定文案（倒数第二张、最后一张）
 
-		// ZIUCH 文字坐标生成函数
-		// 使用 Canvas 路径采样生成文字轮廓点
+		// ZIUCH 文字坐标生成函数（基于预设像素网格）
 		getTextPositions: (isMobile = false) => {
-			// 创建临时 Canvas
-			const canvas = document.createElement('canvas')
-			const ctx = canvas.getContext('2d')
-
 			const text = 'ZIUCH'
-			// 根据屏幕大小动态调整字号
-			const screenSize = Math.min(
-				typeof window !== 'undefined' ? window.innerWidth : 1920,
-				typeof window !== 'undefined' ? window.innerHeight : 1080
-			)
-			const fontSize = isMobile ? Math.floor(screenSize * 0.15) : Math.floor(screenSize * 0.12)
-			const letterSpacing = isMobile ? Math.floor(fontSize * 0.1) : Math.floor(fontSize * 0.2)
+			const letters = text.split('')
+			const density = 2
+			const letterSpacing = 2
 
-			// 设置字体（使用粗体以便有更多点）
-			ctx.font = `bold ${fontSize}px Arial, sans-serif`
+			const patterns = letters.map(letter => LETTER_PATTERNS[letter] || [])
+			const letterWidths = patterns.map(pattern => (pattern[0] ? pattern[0].length : 0))
+			const letterHeights = patterns.map(pattern => pattern.length)
 
-			// 计算文字总宽度
-			const metrics = ctx.measureText(text)
-			const textWidth = metrics.width + letterSpacing * (text.length - 1)
-			const textHeight = fontSize
-
-			// 设置 Canvas 尺寸（增加边距）
-			const padding = fontSize * 0.3
-			canvas.width = isMobile ? textHeight + padding * 2 : textWidth + padding * 2
-			canvas.height = isMobile ? textWidth + padding * 2 : textHeight + padding * 2
-
-			ctx.font = `bold ${fontSize}px Arial, sans-serif`
-			ctx.fillStyle = '#000'
-			ctx.textBaseline = 'top'
-
-			const letterBounds = []
-			const boundPadding = fontSize * 0.08
-
-			// 绘制文字并记录每个字母的包围盒
-			if (isMobile) {
-				// 移动端：竖排文字（从上到下）
-				const totalHeight = fontSize * text.length + letterSpacing * (text.length - 1)
-				const startY = (canvas.height - totalHeight) / 2
-				for (let i = 0; i < text.length; i++) {
-					const char = text[i]
-					const charMetrics = ctx.measureText(char)
-					const x = (canvas.width - charMetrics.width) / 2
-					const y = startY + i * (fontSize + letterSpacing)
-					ctx.fillText(char, x, y)
-
-					letterBounds.push({
-						index: i,
-						minX: x - boundPadding,
-						maxX: x + charMetrics.width + boundPadding,
-						minY: y - boundPadding,
-						maxY: y + fontSize + boundPadding
-					})
-				}
-			} else {
-				// 桌面端：横排文字
-				let offsetX = (canvas.width - textWidth) / 2
-				const offsetY = (canvas.height - textHeight) / 2
-				for (let i = 0; i < text.length; i++) {
-					const char = text[i]
-					const charWidth = ctx.measureText(char).width
-					ctx.fillText(char, offsetX, offsetY)
-
-					letterBounds.push({
-						index: i,
-						minX: offsetX - boundPadding,
-						maxX: offsetX + charWidth + boundPadding,
-						minY: offsetY - boundPadding,
-						maxY: offsetY + fontSize + boundPadding
-					})
-
-					offsetX += charWidth + letterSpacing
-				}
-			}
-
-			// 采样像素点（减小步长，增加密度）
-			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-			const pixels = imageData.data
-			const letterPoints = Array.from({ length: text.length }, () => [])
 			const positionsRaw = []
+			const letterPoints = letters.map(() => [])
 
-			// 采样步长（减小以获得更多点，避免遮挡）
-			const step = Math.max(2, Math.floor(fontSize / 40))
+			if (isMobile) {
+				const maxWidth = Math.max(...letterWidths)
+				const safeMaxWidth = Math.max(1, maxWidth)
+				const totalHeight = patterns.reduce((sum, pattern, idx) => {
+					const height = pattern.length
+					return sum + height + (idx === patterns.length - 1 ? 0 : letterSpacing)
+				}, 0)
+				const safeTotalHeight = Math.max(1, totalHeight)
 
-			for (let y = 0; y < canvas.height; y += step) {
-				for (let x = 0; x < canvas.width; x += step) {
-					const index = (y * canvas.width + x) * 4
-					const alpha = pixels[index + 3]
-
-					// 如果像素不透明，记录位置
-					if (alpha > 128) {
-						const normalized = {
-							x: x / canvas.width,
-							y: y / canvas.height
-						}
-						let letterIndex = 0
-						for (let i = 0; i < letterBounds.length; i++) {
-							const bound = letterBounds[i]
-							if (
-								x >= bound.minX &&
-								x <= bound.maxX &&
-								y >= bound.minY &&
-								y <= bound.maxY
-							) {
-								letterIndex = bound.index
-								break
+				let currentY = 0
+				patterns.forEach((pattern, letterIndex) => {
+					const height = pattern.length
+					const width = pattern[0]?.length || 0
+					const offsetX = (maxWidth - width) / 2
+					for (let row = 0; row < height; row++) {
+						const line = pattern[row] || ''
+						for (let col = 0; col < line.length; col++) {
+							if (line[col] !== '1') continue
+							for (let subY = 0; subY < density; subY++) {
+								for (let subX = 0; subX < density; subX++) {
+									const baseX = offsetX + col + (subX + 0.5) / density
+									const baseY = currentY + row + (subY + 0.5) / density
+									const normalized = {
+										x: baseX / safeMaxWidth,
+										y: baseY / safeTotalHeight,
+										letterIndex
+									}
+									letterPoints[letterIndex].push(normalized)
+									positionsRaw.push(normalized)
+								}
 							}
 						}
-
-						const point = { ...normalized, letterIndex }
-						letterPoints[letterIndex].push(point)
-						positionsRaw.push(point)
 					}
-				}
+					currentY += height + letterSpacing
+				})
+			} else {
+				const totalWidth = patterns.reduce((sum, pattern, idx) => {
+					const width = pattern[0]?.length || 0
+					return sum + width + (idx === patterns.length - 1 ? 0 : letterSpacing)
+				}, 0)
+				const safeTotalWidth = Math.max(1, totalWidth)
+				const maxHeight = Math.max(...letterHeights)
+				const safeMaxHeight = Math.max(1, maxHeight)
+
+				let currentX = 0
+				patterns.forEach((pattern, letterIndex) => {
+					const height = pattern.length
+					const width = pattern[0]?.length || 0
+					const offsetY = (maxHeight - height) / 2
+					for (let row = 0; row < height; row++) {
+						const line = pattern[row] || ''
+						for (let col = 0; col < line.length; col++) {
+							if (line[col] !== '1') continue
+							for (let subY = 0; subY < density; subY++) {
+								for (let subX = 0; subX < density; subX++) {
+									const baseX = currentX + col + (subX + 0.5) / density
+									const baseY = offsetY + row + (subY + 0.5) / density
+									const normalized = {
+										x: baseX / safeTotalWidth,
+										y: baseY / safeMaxHeight,
+										letterIndex
+									}
+									letterPoints[letterIndex].push(normalized)
+									positionsRaw.push(normalized)
+								}
+							}
+						}
+					}
+					currentX += width + letterSpacing
+				})
 			}
 
-			const computeBounds = pts => {
-				if (!pts.length) {
-					return { minX: 0, maxX: 1, minY: 0, maxY: 1 }
-				}
+			const computeBounds = (pts) => {
+				if (!pts.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 }
 				let minX = pts[0].x
 				let maxX = pts[0].x
 				let minY = pts[0].y
@@ -357,11 +381,12 @@ export const CONFIG = {
 				return selected
 			}
 
-			const targetCount = isMobile
+			const limit = isMobile
 				? CONFIG.LIMITS.MAX_CARDS_MOBILE
 				: CONFIG.LIMITS.MAX_CARDS_DESKTOP
-
+			const targetCount = Math.min(limit, positionsRaw.length)
 			const totalSamples = positionsRaw.length || 1
+
 			let quotas = letterPoints.map(group => (group.length ? Math.max(1, Math.round((group.length / totalSamples) * targetCount)) : 0))
 			let sumQuota = quotas.reduce((sum, q) => sum + q, 0)
 
@@ -406,7 +431,7 @@ export const CONFIG = {
 
 				const groupIndices = []
 				for (const point of sorted) {
-					const entry = { ...point, letterIndex: i }
+					const entry = { x: point.x, y: point.y, letterIndex: i }
 					positions.push(entry)
 					groupIndices.push(indexCounter)
 					indexCounter++
@@ -415,16 +440,17 @@ export const CONFIG = {
 			}
 
 			const bounds = computeBounds(positions)
-			const spawnOrder = groups.flat()
+			const spawnOrder = positions.map((_, index) => index)
 
 			return {
 				positions,
 				groups,
 				spawnOrder,
+				word: text,
 				bounds,
 				canvasSize: {
-					width: canvas.width,
-					height: canvas.height
+					width: isMobile ? Math.max(1, Math.max(...letterWidths)) : Math.max(1, patterns.reduce((sum, pattern, idx) => sum + (pattern[0]?.length || 0) + (idx === patterns.length - 1 ? 0 : letterSpacing), 0)),
+					height: isMobile ? Math.max(1, patterns.reduce((sum, pattern, idx) => sum + pattern.length + (idx === patterns.length - 1 ? 0 : letterSpacing), 0)) : Math.max(1, Math.max(...letterHeights))
 				}
 			}
 		},

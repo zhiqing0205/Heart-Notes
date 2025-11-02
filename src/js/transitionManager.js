@@ -69,6 +69,7 @@ export class TransitionManager {
 		cards.forEach((card, index) => {
 			const state = stateManager.getCardState(card)
 			if (!state || state.maximized || state.closing) return
+			card.classList.remove('text-phase-card')
 
 			// 获取对应的爱心位置
 			const heartPosition = heartPositions[index % heartPositions.length]
