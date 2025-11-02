@@ -97,28 +97,31 @@ export class CardManager {
 			const availableWidth = window.innerWidth - cardWidth - horizontalMargin * 2
 			const availableHeight = window.innerHeight - cardHeight - verticalMargin * 2
 
-			// 计算缩放比例
-			const scaleRatio = this.isMobile ? 0.85 : 0.92
+			// 计算缩放比例（占据更大空间）
+			const scaleRatio = this.isMobile ? 0.95 : 0.95
 			const scale = Math.min(availableWidth, availableHeight) * scaleRatio
 
 			// 将归一化坐标转换为实际像素坐标（居中显示）
 			left = horizontalMargin + (availableWidth - scale) / 2 + position.x * scale
 			top = verticalMargin + (availableHeight - scale) / 2 + position.y * scale
 
-			// 添加一些随机偏移，让卡片看起来更自然
-			const randomOffset = this.isMobile ? 3 : 5
-			left += (Math.random() - 0.5) * randomOffset
-			top += (Math.random() - 0.5) * randomOffset
+			// 不添加随机偏移，保持文字清晰可辨
+			// const randomOffset = this.isMobile ? 3 : 5
+			// left += (Math.random() - 0.5) * randomOffset
+			// top += (Math.random() - 0.5) * randomOffset
 
 			// 移动到下一个随机索引
 			this.currentRandomIndex++
 
 			// 追踪生成进度
 			this.cardsGenerated++
+			console.log(`卡片生成进度: ${this.cardsGenerated}/${this.totalCardsToGenerate}`)
 			if (this.cardsGenerated >= this.totalCardsToGenerate && this.onAllCardsGenerated) {
+				console.log('所有卡片已生成，将触发回调')
 				// 延迟触发回调，确保最后一张卡片已经完成渲染
 				setTimeout(() => {
 					if (this.onAllCardsGenerated) {
+						console.log('执行卡片生成完成回调')
 						this.onAllCardsGenerated()
 					}
 				}, CONFIG.ANIMATION.TRANSITION_DURATION + 100)
@@ -224,8 +227,11 @@ export class CardManager {
 		// 绑定交互事件
 		this.setupInteractions(card)
 
-		// 限制卡片数量
-		this.limitCardCount()
+		// 只在非文字布局模式下限制卡片数量
+		// 文字布局模式下需要保留所有卡片用于过渡动画
+		if (!CONFIG.LAYOUT.USE_TEXT_LAYOUT) {
+			this.limitCardCount()
+		}
 
         if (CONFIG.DEBUG) {
             console.log(`创建卡片后: 活动卡片数 = ${stateManager.getActiveCardCount()}`)

@@ -197,8 +197,13 @@ export const CONFIG = {
 			const ctx = canvas.getContext('2d')
 
 			const text = 'ZIUCH'
-			const fontSize = isMobile ? 120 : 100
-			const letterSpacing = isMobile ? 0 : 20
+			// 根据屏幕大小动态调整字号
+			const screenSize = Math.min(
+				typeof window !== 'undefined' ? window.innerWidth : 1920,
+				typeof window !== 'undefined' ? window.innerHeight : 1080
+			)
+			const fontSize = isMobile ? Math.floor(screenSize * 0.15) : Math.floor(screenSize * 0.12)
+			const letterSpacing = isMobile ? Math.floor(fontSize * 0.1) : Math.floor(fontSize * 0.2)
 
 			// 设置字体（使用粗体以便有更多点）
 			ctx.font = `bold ${fontSize}px Arial, sans-serif`
@@ -208,9 +213,10 @@ export const CONFIG = {
 			const textWidth = metrics.width + letterSpacing * (text.length - 1)
 			const textHeight = fontSize
 
-			// 设置 Canvas 尺寸
-			canvas.width = isMobile ? textHeight * 1.2 : textWidth * 1.2
-			canvas.height = isMobile ? textWidth * 1.5 : textHeight * 1.5
+			// 设置 Canvas 尺寸（增加边距）
+			const padding = fontSize * 0.3
+			canvas.width = isMobile ? textHeight + padding * 2 : textWidth + padding * 2
+			canvas.height = isMobile ? textWidth + padding * 2 : textHeight + padding * 2
 
 			ctx.font = `bold ${fontSize}px Arial, sans-serif`
 			ctx.fillStyle = '#000'
@@ -219,7 +225,8 @@ export const CONFIG = {
 			// 绘制文字
 			if (isMobile) {
 				// 移动端：竖排文字（从上到下）
-				const startY = (canvas.height - (fontSize * text.length + letterSpacing * (text.length - 1))) / 2
+				const totalHeight = fontSize * text.length + letterSpacing * (text.length - 1)
+				const startY = (canvas.height - totalHeight) / 2
 				for (let i = 0; i < text.length; i++) {
 					const char = text[i]
 					const charMetrics = ctx.measureText(char)
@@ -239,13 +246,13 @@ export const CONFIG = {
 				}
 			}
 
-			// 采样像素点
+			// 采样像素点（减小步长，增加密度）
 			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 			const pixels = imageData.data
 			const positions = []
 
-			// 采样步长（控制点的密度）
-			const step = isMobile ? 6 : 5
+			// 采样步长（减小以获得更多点，避免遮挡）
+			const step = Math.max(2, Math.floor(fontSize / 40))
 
 			for (let y = 0; y < canvas.height; y += step) {
 				for (let x = 0; x < canvas.width; x += step) {
@@ -263,17 +270,7 @@ export const CONFIG = {
 				}
 			}
 
-			// 如果点太多，进行采样（限制在约 200 个点）
-			const targetPoints = 200
-			if (positions.length > targetPoints) {
-				const step = Math.floor(positions.length / targetPoints)
-				const sampled = []
-				for (let i = 0; i < positions.length; i += step) {
-					sampled.push(positions[i])
-				}
-				return sampled
-			}
-
+			// 不再限制点数，返回所有采样点
 			return positions
 		},
 

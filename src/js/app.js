@@ -186,9 +186,7 @@ class App {
 			if (!this.isRunning) return
 
 			// 计算当前间隔，最后10张卡片逐渐变慢营造"呼吸感"
-			const maxCards = this.isMobile
-				? CONFIG.LIMITS.MAX_CARDS_MOBILE
-				: CONFIG.LIMITS.MAX_CARDS_DESKTOP
+			const maxCards = this.cardManager.totalCardsToGenerate
 			const currentCount = stateManager.getActiveCardCount()
 			const remainingCards = maxCards - currentCount
 
@@ -242,13 +240,11 @@ class App {
 			return
 		}
 
-		const maxCards = this.isMobile
-			? CONFIG.LIMITS.MAX_CARDS_MOBILE
-			: CONFIG.LIMITS.MAX_CARDS_DESKTOP
+		// 使用卡片管理器中的实际目标数量
+		const maxCards = this.cardManager.totalCardsToGenerate
 		const currentCount = stateManager.getActiveCardCount()
-		if (CONFIG.DEBUG) {
-			console.log(`当前卡片数: ${currentCount}, 最大限制: ${maxCards}`)
-		}
+		console.log(`当前卡片数: ${currentCount}, 目标: ${maxCards}`)
+
 		if (currentCount < maxCards) {
 			// 小突发：在高FPS时一次生成最多2张
 			const canCreate = Math.min(this.spawnBurst || 1, maxCards - currentCount)
@@ -260,15 +256,10 @@ class App {
 			if (!this.hasReachedMaxCards) {
 				this.hasReachedMaxCards = true
 				this.stopAutoSpawn()
-				if (CONFIG.DEBUG) console.log('已达到最大卡片数，停止自动生成')
+				console.log('已达到目标卡片数，停止自动生成')
 
-				// 延迟一小段时间后触发粒子光环效果
-				// 让最后一张卡片的入场动画完成
-				setTimeout(() => {
-					if (this.particleEffect) {
-						this.particleEffect.showHeartParticles()
-					}
-				}, 500)
+				// 注意：不在这里触发粒子效果，因为现在我们使用过渡动画
+				// 粒子效果会在过渡动画完成后触发
 			}
 		}
 	}

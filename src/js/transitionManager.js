@@ -82,19 +82,23 @@ export class TransitionManager {
 			newLeft += (Math.random() - 0.5) * randomOffset
 			newTop += (Math.random() - 0.5) * randomOffset
 
-			// 添加过渡样式
+			// 添加过渡样式（包括 transform 的过渡）
 			const delay = index * 8 // 错落延迟（ms）
-			card.style.transition = `left 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms, top 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms`
+			card.style.transition = `left 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms, top 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms, transform 1.2s cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms`
 
 			// 延迟触发位置变化
 			setTimeout(() => {
 				card.style.left = `${newLeft}px`
 				card.style.top = `${newTop}px`
+				// 将所有卡片恢复到正常大小和无旋转状态
+				card.style.transform = 'scale(1) rotate(0deg)'
 
 				// 更新状态
 				stateManager.updateCardState(card, {
 					left: newLeft,
 					top: newTop,
+					scale: 1,
+					angle: 0,
 					lastPosition: { left: newLeft, top: newTop }
 				})
 			}, 10)
@@ -105,9 +109,11 @@ export class TransitionManager {
 
 		// 过渡完成后
 		setTimeout(() => {
-			// 移除过渡样式，恢复默认
+			// 清除过渡样式和内联 transform，让 CSS 动画能够生效
 			cards.forEach(card => {
 				card.style.transition = ''
+				// 清除内联 transform，保留位置信息
+				card.style.transform = ''
 			})
 
 			this.isTransitioning = false
