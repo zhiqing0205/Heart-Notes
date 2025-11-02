@@ -19,11 +19,12 @@ export class CardManager {
 	this.textBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 }
 	this.heartPositions = []
 	this.currentPositionIndex = 0
-		this.currentRandomIndex = 0
-		this.randomizedIndices = []
-		this.textGroups = []
-		this.textWord = 'ZIUCH'
-		this.totalCardsToGenerate = 0
+	this.currentRandomIndex = 0
+	this.randomizedIndices = []
+	this.textGroups = []
+	this.textLetterScale = []
+	this.textWord = 'ZIUCH'
+	this.totalCardsToGenerate = 0
 		this.cardsGenerated = 0
 		this.onAllCardsGenerated = null // 回调函数
 
@@ -82,6 +83,18 @@ export class CardManager {
 			...pos,
 			index: idx
 		}))
+
+		this.textLetterScale = this.textPositions.map((_, idx) => {
+			const letter = (textLayout.word || this.textWord || 'ZIUCH')[idx] || ''
+			switch (letter.toUpperCase()) {
+				case 'U':
+					return this.isMobile ? 1.12 : 1.22
+				case 'H':
+					return this.isMobile ? 1.1 : 1.18
+				default:
+					return 1
+			}
+		})
 
 		this.textGroups = Array.isArray(textLayout.groups) ? textLayout.groups : []
 		this.randomizedIndices = this.shuffleIndices(this.textPositions.length)
@@ -238,8 +251,14 @@ export class CardManager {
 		const rangeY = Math.max(bounds.maxY - bounds.minY, 0.001)
 		const normalizedX = (position.x - bounds.minX) / rangeX
 		const normalizedY = (position.y - bounds.minY) / rangeY
-		const clampedX = Math.min(1, Math.max(0, normalizedX))
+		let clampedX = Math.min(1, Math.max(0, normalizedX))
 		const clampedY = Math.min(1, Math.max(0, normalizedY))
+
+		const scaleX = this.textLetterScale[randomIndex] || 1
+		if (scaleX !== 1) {
+			clampedX = ((clampedX - 0.5) * scaleX) + 0.5
+			clampedX = Math.min(1, Math.max(0, clampedX))
+		}
 
 		const boardRect = this.board.getBoundingClientRect()
 		const boardWidth = boardRect.width || window.innerWidth
@@ -255,7 +274,8 @@ export class CardManager {
 		const usableWidth = Math.max(boardWidth - paddingX * 2, cardWidth * 1.15)
 		const usableHeight = Math.max(boardHeight - paddingY * 2, cardHeight * 1.2)
 
-		const centerX = paddingX + clampedX * usableWidth
+		const globalShift = this.isMobile ? 0 : boardWidth * 0.02
+		const centerX = paddingX + clampedX * usableWidth - globalShift
 		const centerY = paddingY + clampedY * usableHeight
 
 		left = centerX - visualWidth / 2
